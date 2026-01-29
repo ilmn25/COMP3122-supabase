@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import OpenAI from "npm:openai@4.0.0";
-import * as pdfjsLib from "npm:pdfjs-dist@4.0.379";
+import { pdfToString } from "../pdf.ts";
 import { Pinecone } from "npm:@pinecone-database/pinecone";
 
 const githubToken = Deno.env.get("GITHUB_TOKEN");
@@ -17,16 +17,7 @@ Deno.serve(async (req) => {
             },
         });
     }
-    const formData = await req.formData();
-    const file = formData.get("file") as File;
-    const arrayBuffer = await file.arrayBuffer();
-    const pdfDoc = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
-    let text = "";
-    for (let i = 1; i <= pdfDoc.numPages; i++) {
-        const page = await pdfDoc.getPage(i);
-        const content = await page.getTextContent();
-        text += content.items.map((item: any) => item.str).join(" ") + "\n";
-    }
+    const text = await pdfToString(formData.get("file") as File);
 
     // Init OpenAI client
     const client = new OpenAI({ apiKey: githubToken, baseURL: "https://models.github.ai/inference" });
